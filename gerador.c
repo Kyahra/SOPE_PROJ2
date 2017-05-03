@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){
   pthread_t handler_tid;
   pthread_t generator_tid = pthread_self();
 
-  rc = pthread_create(&handler_tid, NULL, denied_request_handler,&generator_tid );
+  rc = pthread_create(&handler_tid, NULL, denied_request_handler,&generator_tid);
   return 0;
 }
 
