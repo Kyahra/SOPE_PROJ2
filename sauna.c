@@ -63,14 +63,17 @@ int main(int argc, char* argv[]){
   putchar('\n');
 
   while(readline(fd,str)){
-    printf("%s",str);
 
     struct Request r = getRequest(str);
     writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration);
 
     if(checkEntrance(&gender,r.gender,available_seats)){
-      // fazer merdas
-    }
+
+      int i = 0;
+      for(; i < num_seats ; i++){
+        request_list[i].duration ==  0;
+        request_list[i] = r;
+      }
 
 
       int rc;
@@ -79,6 +82,9 @@ int main(int argc, char* argv[]){
       void * ret;
 
       rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);
+    }
+
+
 
 }
 
@@ -146,7 +152,7 @@ void  *time_update_sauna(void * r){
 
   sem_wait(&semaphore);
   printf("passou o wait\n");
-  usleep(r_copy.duration);
+  usleep(r_copy.duration*1000);
 
   sem_wait(&semaphore2);
   available_seats++;

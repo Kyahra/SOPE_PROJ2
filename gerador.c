@@ -99,8 +99,8 @@ void *denied_request_handler(void * null)
 
 int main(int argc, char* argv[]){
 
-  if(argc != 4) {
-    printf("usage: gerador <n. pedidos> <max. utilização> <un. tempo>\n");
+  if(argc != 3) {
+    printf("usage: gerador <n. pedidos> <max. utilização>\n");
     exit(1);
   }
 
@@ -109,11 +109,6 @@ int main(int argc, char* argv[]){
 
   denied_requests = (int *) malloc(sizeof(int)* max_requests);
 
- // O FIFO vai  ter que ser criado em sauna.c
- // correr sauna.c primeiro
- // dá erro ao abrir para escrita
-
-
   int fd = open("/tmp/entrada", O_WRONLY | O_NONBLOCK | O_APPEND);
 
   if(fd< 0){
@@ -121,22 +116,23 @@ int main(int argc, char* argv[]){
     exit(2);
   }
 
+
+    int rc;
+    pthread_t handler_tid;
+    pthread_t generator_tid = pthread_self();
+
+    rc = pthread_create(&handler_tid, NULL, denied_request_handler,&generator_tid);
+
   sendRequest(fd, max_requests, max_duration);
 
   close(fd);
 
-  int rc;
-  pthread_t handler_tid;
-  pthread_t generator_tid = pthread_self();
-
-  rc = pthread_create(&handler_tid, NULL, denied_request_handler,&generator_tid);
   return 0;
 }
 
 
 
 void sendRequest(int fd, int max_requests, int max_duration){
-
 
     srand(time(NULL));
 
@@ -160,7 +156,7 @@ void sendRequest(int fd, int max_requests, int max_duration){
         gend = " F ";
       }
 
-      int rd = rand() % max_duration + 3600;
+      int rd = rand() % max_duration;
 
       sprintf(duration, "%d", rd);
       strcat(request, duration);
