@@ -1,14 +1,10 @@
-CC = gcc
-CFLAGS = -Wall -lpthread 
-RM = rm
-
-all: sauna gerador
-
+all: sauna.c gerador.c
+	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
+	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
 sauna:
-	$(CC) $(CFLAGS) sauna.c -o bin/sauna
-
+	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
 gerador:
-	$(CC) $(CFLAGS) gerador.c -o bin/gerador
+	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
 
 clean:
-	$(RM) bin/*;
+	rm -f /tmp/entrada /tmp/rejeitados
