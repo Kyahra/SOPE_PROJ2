@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
   char str[100];
 
   putchar('\n');
-  int threads_ids[1000];
+  pthread_t threads_ids[1000];
   int count_ids = 0;
   while(readline(fd,str)){
 
@@ -84,6 +84,8 @@ int main(int argc, char* argv[]){
       threads_ids[count_ids] = handler_tid;
       count_ids++;
       
+    } else {
+      writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration);
     }
     
        
