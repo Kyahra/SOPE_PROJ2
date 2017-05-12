@@ -7,12 +7,14 @@
 #include <pthread.h>
 #include <string.h>
 #include <semaphore.h>
+#include <time.h>
+#include "utils.h"
 
-int readline(int fd,char *str);
-void writeDescriptor(char *type, int id, char * gender, int dur);
+
 int checkEntrance(char * sauna_gender, char * request_gender, int available_seats);
 void  *time_update_sauna(void * r);
 struct Request getRequest(char * request_str);
+struct timespec init_time;
 
 
 
@@ -32,6 +34,8 @@ struct Request * request_list;
 sem_t semaphore, semaphore2;
 
 int main(int argc, char* argv[]){
+
+  clock_gettime(CLOCK_MONOTONIC_RAW, &init_time);
 
   if(argc != 2) {
     printf("usage: sauna <n. lugares>\n");
@@ -65,8 +69,9 @@ int main(int argc, char* argv[]){
   int count_ids = 0;
   while(readline(fd,str)){
 
+
     struct Request r = getRequest(str);
-    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration);
+    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration,init_time, "/tmp/bal.");
 
     if(checkEntrance(&gender,r.gender,available_seats)){
       int i = 0;
@@ -121,38 +126,7 @@ struct Request getRequest(char * request_str){
 
 }
 
-void writeDescriptor(char *type, int id, char * gender, int dur){
 
-   FILE * fp;
-   char file_name[100];
-
-
-   time_t rawtime;
-   struct tm * timeinfo;
-   time(& rawtime);
-   timeinfo = localtime( &rawtime);
-
-   sprintf(file_name, "/tmp/bal.%d", (int) getpid());
-
-  fp = fopen (file_name, "a+");
-  fprintf(fp, "%-10d:%-10d:%-10d - %-10d - %-10d: %-10s - %-10d - %-10s\n",timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec,
-  getpid(),id,gender,dur,type);
-
-  fclose(fp);
-
-}
-
-
-
-int readline(int fd,char *str)
-{
-  int n;
-  do{
-    n = read(fd,str,1);
-  }while (n>0 && *str++ !='\0');
-
-  return (n>0);
-}
 
 void  *time_update_sauna(void * r){
 
@@ -172,7 +146,7 @@ void  *time_update_sauna(void * r){
     if(request_list[i].serial_number == r_copy.serial_number)
       request_list[i].duration =0;
   }
-  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration);
+  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration,init_time, "/tmp/bal.");
   sem_post(&semaphore2);
   sem_post(&semaphore);
   printf("saiu do wait\n");
