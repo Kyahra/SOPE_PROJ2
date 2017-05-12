@@ -18,11 +18,6 @@ struct timespec init_time;
 
 
 
-struct Request{
-  int duration;
-  char *gender;
-  int serial_number;
-};
 
 int num_seats;
 int available_seats;
@@ -68,7 +63,7 @@ int main(int argc, char* argv[]){
 
   int threads_ids[1000];
   int count_ids = 0;
-  while(readline(fd,str)){
+  while(readLine(fd,str)){
 
 
     struct Request r = getRequest(str);
@@ -88,19 +83,24 @@ int main(int argc, char* argv[]){
       void * ret;
       rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);
       threads_ids[count_ids] = handler_tid;
-      count_ids++;
-      
+      count_ids++;struct request{
+  double duration;
+  char gender;
+  int serial_number;
+};
+
     }
-    
-       
+
+
 
 }
 
+/*
 int j = 0;
     for(j; j <= count_ids; j++) {
       pthread_join(threads_ids[j], NULL);
     }
-
+*/
   close(fd);
 
   return 0;
@@ -163,9 +163,9 @@ int checkEntrance(char * sauna_gender, char * request_gender, int available_seat
     //printf("este pedido e do genero %c \n", (*request_gender));
     return 1;
   }
-   
+
     return 0;
-  
-  
+
+
 
 }
