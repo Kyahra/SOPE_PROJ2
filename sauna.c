@@ -66,16 +66,18 @@ int main(int argc, char* argv[]){
 
   putchar('\n');
 
-  while(readLine(fd,str)){
+  int threads_ids[1000];
+  int count_ids = 0;
+  while(readline(fd,str)){
+
 
     struct Request r = getRequest(str);
     writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration,init_time, "/tmp/bal.");
 
     if(checkEntrance(&gender,r.gender,available_seats)){
-
       int i = 0;
       for(; i < num_seats ; i++){
-        request_list[i].duration ==  0;
+        if(request_list[i].duration ==  0)
         request_list[i] = r;
       }
 
@@ -84,13 +86,20 @@ int main(int argc, char* argv[]){
       pthread_t handler_tid;
       pthread_t sauna_tid = pthread_self();
       void * ret;
-
       rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);
+      threads_ids[count_ids] = handler_tid;
+      count_ids++;
+      
     }
-
-
+    
+       
 
 }
+
+int j = 0;
+    for(j; j <= count_ids; j++) {
+      pthread_join(threads_ids[j], NULL);
+    }
 
   close(fd);
 
@@ -144,18 +153,19 @@ void  *time_update_sauna(void * r){
 }
 
 int checkEntrance(char * sauna_gender, char * request_gender, int available_seats){
-
+  //printf("genero atual na sauna: %c \n", (*sauna_gender));
   if(available_seats == num_seats){
     sauna_gender = request_gender;
     return 1;
   }
 
-  if(available_seats == 0)
-    return 0;
-
-  if((* sauna_gender) != (*request_gender))
-    return 0;
-
+  if((*request_gender) == (*sauna_gender)) {
+    //printf("este pedido e do genero %c \n", (*request_gender));
     return 1;
+  }
+   
+    return 0;
+  
+  
 
 }
