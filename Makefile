@@ -8,3 +8,6 @@ gerador:
 
 clean:
 	rm -f /tmp/entrada /tmp/rejeitados
+
+cleanLogs:
+    rm -f /tmp/bal.* /tmp/ger.*

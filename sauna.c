@@ -60,8 +60,7 @@ int main(int argc, char* argv[]){
   char str[100];
 
   putchar('\n');
-
-  int threads_ids[1000];
+  pthread_t threads_ids[1000];
   int count_ids = 0;
   while(readLine(fd,str)){
 
@@ -83,11 +82,11 @@ int main(int argc, char* argv[]){
       void * ret;
       rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);
       threads_ids[count_ids] = handler_tid;
-      count_ids++;struct request{
-  double duration;
-  char gender;
-  int serial_number;
-};
+
+      count_ids++;
+      
+    } else {
+      writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration);
 
     }
 
@@ -95,12 +94,12 @@ int main(int argc, char* argv[]){
 
 }
 
-/*
+
 int j = 0;
     for(j; j <= count_ids; j++) {
       pthread_join(threads_ids[j], NULL);
     }
-*/
+
   close(fd);
 
   return 0;
