@@ -105,7 +105,7 @@ void sendRequest(int fd, int max_requests, int max_duration){
     sprintf(serial_number, "%d", i);
 
       write(fd, "\n", 1);
-      writeDescriptor("PEDIDO", i, gend, rd, init_time);
+      writeDescriptor("PEDIDO", i, gend, rd, init_time, "/tmp/ger.");
       sleep(2);
     }
 

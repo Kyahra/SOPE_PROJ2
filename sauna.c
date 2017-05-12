@@ -69,7 +69,7 @@ int main(int argc, char* argv[]){
   while(readLine(fd,str)){
 
     struct Request r = getRequest(str);
-    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration,init_time);
+    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration,init_time, "/tmp/bal.");
 
     if(checkEntrance(&gender,r.gender,available_seats)){
 
@@ -136,7 +136,7 @@ void  *time_update_sauna(void * r){
     if(request_list[i].serial_number == r_copy.serial_number)
       request_list[i].duration =0;
   }
-  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration,init_time);
+  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration,init_time, "/tmp/bal.");
   sem_post(&semaphore2);
   sem_post(&semaphore);
   printf("saiu do wait\n");
