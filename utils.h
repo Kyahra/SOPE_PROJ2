@@ -5,6 +5,12 @@
 #include<unistd.h>
 #include <inttypes.h>
 
+struct Request{
+  double duration;
+  char * gender;
+  int serial_number;
+};
+
 
 void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec init_time, char* file_type){
 

@@ -20,19 +20,30 @@ int fDeniedNum, mDeniedNum;
 int fDiscardedRequests, fDiscardedRequests;
 struct timespec init_time;
 
-struct request{
-  double duration;
-  char gender;
-  int serial_number;
-};
+// STATS
+
+int total_requests =0;
+int total_f_requests =0;
+int total_m_requests=0;
+
+int rejected_requests =0;
+int rejected_f_requests =0;
+int rejected_m_requests =0;
+
+int discarded_requests =0;
+int discarded_f_requests =0;
+int discarded_m_requests =0;
 
 
-void sendRequest(int fd, int max_requests, int max_duration);
+
+char * sendRequest(int fd, int max_requests, int max_duration, int id);
 void *denied_request_handler(void * null);
+void printStats();
 
 int main(int argc, char* argv[]){
 
   clock_gettime(CLOCK_MONOTONIC_RAW, &init_time);
+
 
   if(argc != 3) {
     printf("usage: gerador <n. pedidos> <max. utilização>\n");
@@ -41,6 +52,7 @@ int main(int argc, char* argv[]){
 
   int max_requests = atoi(argv[1]);
   int max_duration = atoi(argv[2]);
+
 
   denied_requests = (int *) malloc(sizeof(int)* max_requests);
 
@@ -52,35 +64,61 @@ int main(int argc, char* argv[]){
   }
 
 
-    int rc;
-    pthread_t handler_tid;
-    pthread_t generator_tid = pthread_self();
+  int rc;
+  pthread_t handler_tid;
+  pthread_t generator_tid = pthread_self();
 
-    //rc = pthread_create(&handler_tid, NULL, denied_request_handler,&generator_tid);
+  rc = pthread_create(&handler_tid, NULL, denied_request_handler,&generator_tid);
 
-  sendRequest(fd, max_requests, max_duration);
+  int i = 0;
+
+  for(i; i < max_requests; i++){
+    char* gend;
+
+    gend = sendRequest(fd, max_requests, max_duration,i);
+
+    total_requests++;
+    if(gend == " M ") total_m_requests++;
+    if(gend == " F ") total_f_requests++;
+
+  }
 
   close(fd);
+
+  printStats();
 
   return 0;
 }
 
+void printStats(){
+
+  printf("Generated requests: %d\n", total_requests);
+  printf("Female generated requests: %d\n", total_f_requests);
+  printf("Male generated requests: %d\n", total_m_requests);
+
+  printf("Rejected requests: %d\n", rejected_requests);
+  printf("Female rejected requests: %d\n", rejected_f_requests);
+  printf("Male rejected requests: %d\n", rejected_m_requests);
+
+  printf("Discarded requests: %d\n", discarded_requests);
+  printf("Female discarded requests: %d\n", discarded_f_requests);
+  printf("Male discarded requests: %d\n", discarded_m_requests);
+
+}
 
 
-void sendRequest(int fd, int max_requests, int max_duration){
+
+char * sendRequest(int fd, int max_requests, int max_duration, int id){
 
     srand(time(NULL));
 
-    int i = 0;
-
-    for(i; i < max_requests; i++){
 
       char request[100];
       char duration[15];
       char serial_number[10];
 
       int r = rand() % 2;
-      sprintf(request, "%d", i);
+      sprintf(request, "%d", id);
       char * gend;
       if(r == 0) {
         strcat(request, " M ");
@@ -102,12 +140,18 @@ void sendRequest(int fd, int max_requests, int max_duration){
       exit(3);
     }
 
-    sprintf(serial_number, "%d", i);
+    sprintf(serial_number, "%d", id);
 
       write(fd, "\n", 1);
-      writeDescriptor("PEDIDO", i, gend, rd, init_time, "/tmp/ger.");
+      writeDescriptor("PEDIDO", id, gend, rd, init_time, "/tmp/ger.");
       sleep(2);
-    }
+
+
+      return gend;
+
+}
+
+void *denied_request_handler(void * null){
 
 }
 
