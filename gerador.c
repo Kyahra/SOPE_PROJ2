@@ -34,6 +34,9 @@ int discarded_requests =0;
 int discarded_f_requests =0;
 int discarded_m_requests =0;
 
+int processedRequests = 0; //ou servidos ou descartados
+sem_t mutex;
+
 
 
 char * sendRequest(int fd, int max_requests, int max_duration, int id);
@@ -43,7 +46,7 @@ void printStats();
 int main(int argc, char* argv[]){
 
   clock_gettime(CLOCK_MONOTONIC_RAW, &init_time);
-
+  sem_init(&mutex, 0, 1);
 
   if(argc != 3) {
     printf("usage: gerador <n. pedidos> <max. utilização>\n");
@@ -52,12 +55,17 @@ int main(int argc, char* argv[]){
 
   int max_requests = atoi(argv[1]);
   int max_duration = atoi(argv[2]);
-
-
+  
+  pthread_t auxThread;
+  
+  pthread_create(&auxThread, NULL, getServedRequest,&max_requests);//thread que vais receber uma nota da sauna quando um pedido e servido
   denied_requests = (int *) malloc(sizeof(int)* max_requests);
 
   int fd = open("/tmp/entrada", O_WRONLY  | O_APPEND);
 
+  mkfifo("/tmp/rejeitados",0660);
+  int fdDenied=open("/tmp/rejeitados",O_RDONLY);
+  
   if(fd< 0){
     perror("/tmp/entrada");
     exit(2);
@@ -153,6 +161,21 @@ char * sendRequest(int fd, int max_requests, int max_duration, int id){
 
 void *denied_request_handler(void * null){
 
+}
+
+void *getServedRequest(void * arg) {
+  mkfifo("/tmp/aux",0660);
+  int fdDenied=open("/tmp/aux",O_RDONLY);
+  while(*((int *)arg) != processedRequests) {
+     char str[100];
+     int trash;
+     trash = readLine(fd,str);
+     if(trash > 0) {
+       sem_wait(&mutex);
+       processedRequests++; //incrementar tambem quando um pedido e rejeitado pela terceira vez
+       sem_post(&mutex);
+     }
+  }
 }
 
 /*

@@ -12,6 +12,8 @@ struct Request{
 };
 
 
+
+
 void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec init_time, char* file_type){
 
    FILE * fp;

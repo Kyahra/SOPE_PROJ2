@@ -7,12 +7,14 @@
 #include <pthread.h>
 #include <string.h>
 #include <semaphore.h>
+#include "utils.h"
 
 int readline(int fd,char *str);
 void writeDescriptor(char *type, int id, char * gender, int dur);
 int checkEntrance(char * sauna_gender, char * request_gender, int available_seats);
 void  *time_update_sauna(void * r);
 struct Request getRequest(char * request_str);
+void denyRequest(int fd, int id, char * gender, int dur);
 
 
 
@@ -40,7 +42,7 @@ int main(int argc, char* argv[]){
 
   int  fd;
   char gender ='0';
-  request_list = (struct Request *) malloc(sizeof(struct Request)* num_seats);
+  request_list = (Request *) malloc(sizeof(Request)* num_seats);
   struct Request null_request;
 
   null_request.duration = 0;
@@ -52,6 +54,12 @@ int main(int argc, char* argv[]){
 
   mkfifo("/tmp/entrada",0660);
   fd=open("/tmp/entrada",O_RDONLY);
+  
+  int fdDenied = open("/tmp/rejeitados", O_WRONLY  | O_APPEND);
+  if(fdDenied < 0){
+    perror("/tmp/rejeitados");
+    exit(2);
+  }
 
   char str[100];
 
@@ -82,10 +90,8 @@ int main(int argc, char* argv[]){
       
     } else {
       writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration);
-
+      denyRequest(fdDinied, r.serial_number, r.gender, r.duration);
     }
-
-
 
 }
 
@@ -153,7 +159,10 @@ int readline(int fd,char *str)
 }
 
 void  *time_update_sauna(void * r){
-
+  int fd;
+  fd=open("/tmp/aux",O_WRONLY  | O_APPEND);
+  
+  
   struct Request r_copy = *((struct Request *) r);
   printf("entrou no thread\n");
 
@@ -174,6 +183,7 @@ void  *time_update_sauna(void * r){
   sem_post(&semaphore2);
   sem_post(&semaphore);
   printf("saiu do wait\n");
+  write(fd, "lixo\n", 5);
 
 }
 
@@ -191,6 +201,26 @@ int checkEntrance(char * sauna_gender, char * request_gender, int available_seat
 
     return 0;
 
+}
 
+void denyRequest(int fd, int id, char * gender, int dur){
+
+    srand(time(NULL));
+
+
+      char request[100];
+
+      sprintf(request, "%d", id);
+      strcat(request, gender);
+      strcat(request, dur);
+
+
+    if(write(fd, request, strlen(request)+1) != strlen(request)+1){
+      perror("/tmp/rejeitados");
+      exit(3);
+    }
+
+    write(fd, "\n", 1);
+    
 
 }
