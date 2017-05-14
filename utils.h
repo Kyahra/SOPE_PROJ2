@@ -24,16 +24,15 @@ void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec 
 
 
    clock_gettime(CLOCK_MONOTONIC_RAW, &msg_time);
-   uint64_t delta_us = (msg_time.tv_sec - init_time.tv_sec) * 1000 + (msg_time.tv_nsec - init_time.tv_nsec) / 1000000;
+   double delta_us = (msg_time.tv_sec - init_time.tv_sec) * 1000 + (msg_time.tv_nsec - init_time.tv_nsec) / 1000000;
 
   sprintf(pid, "%d", (int) getpid());
   sprintf(file_name,"%s", file_type);
   strcat(file_name, pid);
 
 
-
   fp = fopen (file_name, "a+");
-  fprintf(fp, "%-10" PRIu64 " - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(),id,gender,dur,type);
+  fprintf(fp, "%-10.2f - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(),id,gender,dur,type);
 
   fclose(fp);
 

@@ -33,9 +33,6 @@ int discarded_requests =0;
 int discarded_f_requests =0;
 int discarded_m_requests =0;
 
-int processedRequests = 0; //ou serao servidos ou foram descartados
-sem_t mutex;
-
 
 
 char * sendRequest(int fd, int max_requests, int max_duration, int id);
@@ -46,7 +43,7 @@ void printStats();
 int main(int argc, char* argv[]){
 
   clock_gettime(CLOCK_MONOTONIC_RAW, &init_time);
-  sem_init(&mutex, 0, 1);
+
 
   if(argc != 3) {
     printf("usage: gerador <n. pedidos> <max. utilização>\n");
@@ -101,17 +98,21 @@ int main(int argc, char* argv[]){
 
 void printStats(){
 
-  printf("Generated requests: %d\n", total_requests);
-  printf("Female generated requests: %d\n", total_f_requests);
-  printf("Male generated requests: %d\n", total_m_requests);
+  printf("\n  GENERATED REQUESTS\n");
+  printf("    Total: %d\n", total_requests);
+  printf("    Female: %d\n", total_f_requests);
+  printf("    Male: %d\n", total_m_requests);
 
-  printf("Rejected requests: %d\n", rejected_requests);
-  printf("Female rejected requests: %d\n", rejected_f_requests);
-  printf("Male rejected requests: %d\n", rejected_m_requests);
+  printf("\n  REJECTED REQUESTS\n");
+  printf("    Total: %d\n", rejected_requests);
+  printf("    Female: %d\n", rejected_f_requests);
+  printf("    Male: %d\n", rejected_m_requests);
 
-  printf("Discarded requests: %d\n", discarded_requests);
-  printf("Female discarded requests: %d\n", discarded_f_requests);
-  printf("Male discarded requests: %d\n", discarded_m_requests);
+
+  printf("\n  DISCARDED REQUESTS\n");
+  printf("    Total: %d\n", discarded_requests);
+  printf("    Female: %d\n", discarded_f_requests);
+  printf("    Male: %d\n\n", discarded_m_requests);
 
 }
 
@@ -169,14 +170,30 @@ void *denied_request_handler(void * arg){
   while(readLine(fdDenied,str)) {
     struct Request r = getRequest(str);
     count_rejection[r.serial_number]++;
+
+    writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.");
+
+    rejected_requests++;
+    if(strcmp(r.gender, "M")==0) rejected_m_requests++;
+    if(strcmp(r.gender, "F")==0) rejected_f_requests++;
+
     if(count_rejection[r.serial_number] > 2) {//pedido sera descartado
-      sem_wait(&mutex);
-      processedRequests++; //incrementar tambem quando um pedido e rejeitado pela terceira vez
-      sem_post(&mutex);
+      writeDescriptor("DESCARTADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.");
+
+      discarded_requests++;
+      if(strcmp(r.gender, "M")==0) discarded_m_requests++;
+      if(strcmp(r.gender, "F")==0) discarded_f_requests++;
+
     } else {
       sendBackRequest(*((int *)arg), r.serial_number, r.gender, r.duration, "/tmp/entrada");
       writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.");
+
     }
+
+    rejected_requests++;
+
+    if(strcmp(r.gender, "M")==0) rejected_m_requests++;
+    if(strcmp(r.gender, "F")==0) rejected_f_requests++;
   }
   close(fdDenied);
 }

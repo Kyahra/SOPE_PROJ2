@@ -32,16 +32,15 @@ int rejected_requests =0;
 int rejected_f_requests =0;
 int rejected_m_requests =0;
 
-int discarded_requests =0;
-int discarded_f_requests =0;
-int discarded_m_requests =0;
+int served_requests =0;
+int served_f_requests =0;
+int served_m_requests =0;
 
-//int readline(int fd,char *str);
-//void writeDescriptor(char *type, int id, char * gender, int dur);
+
 int checkEntrance(const char * request_gender, int available_seats);
 void  *time_update_sauna(void * r);
-//struct Request getRequest(char * request_str);
-//void sendBackRequest(int fd, int id, char * gender, int dur);
+void printStats();
+
 
 int main(int argc, char* argv[]){
   clock_gettime(CLOCK_MONOTONIC_RAW, &init_time);
@@ -96,7 +95,9 @@ int main(int argc, char* argv[]){
     struct Request r = getRequest(str);
     writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.");
 
-
+    total_requests++;
+    if(strcmp(r.gender, "M")==0) total_m_requests++;
+    if(strcmp(r.gender, "F")==0) total_f_requests++;
 
     if(checkEntrance(r.gender,available_seats)){
 
@@ -116,7 +117,6 @@ int main(int argc, char* argv[]){
       pthread_t sauna_tid = pthread_self();
       void * ret;
 
-        printf("%d - %s\n",r.serial_number, r.gender);
 
 
       rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);//thread equivalente a um pedido aceite pela sauna
@@ -127,7 +127,15 @@ int main(int argc, char* argv[]){
     } else {//pedido do genero oposto ao que se encontra na sauna
       writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.");
       sendBackRequest(fdDenied, r.serial_number, r.gender, r.duration, "/tmp/rejeitados");
+
+      rejected_requests++;
+      if(strcmp(r.gender, "M")==0) rejected_m_requests++;
+      if(strcmp(r.gender, "F")==0) rejected_f_requests++;
+
+
     }
+
+
 
 }
 
@@ -139,6 +147,8 @@ int main(int argc, char* argv[]){
   }
 
   close(fd);
+
+  printStats();
 
   return 0;
 }
@@ -165,10 +175,12 @@ void  *time_update_sauna(void * r){
 
   }
 
-  //printf("%d - %s\n",r_copy.serial_number,r_copy.gender);
+
   writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration, init_time, "/tmp/bal.");
 
-
+  served_requests++;
+  if(strcmp(r_copy.gender, "M")==0) served_m_requests++;
+  if(strcmp(r_copy.gender, "F")==0) served_f_requests++;
 
 
   sem_post(&semaphore2);
@@ -184,12 +196,30 @@ int checkEntrance(const char * request_gender, int available_seats){
       return 1;
   }
 
-
-
   if(strcmp(request_gender, currGender) == 0) {
     return 1;
   }
 
     return 0;
+
+}
+
+void printStats(){
+
+  printf("\n  RECEIVED REQUESTS\n");
+  printf("    Total: %d\n", total_requests);
+  printf("    Female: %d\n", total_f_requests);
+  printf("    Male: %d\n", total_m_requests);
+
+  printf("\n  REJECTED REQUESTS\n");
+  printf("    Total: %d\n", rejected_requests);
+  printf("    Female: %d\n", rejected_f_requests);
+  printf("    Male: %d\n", rejected_m_requests);
+
+
+  printf("\n  SERVED REQUESTS\n");
+  printf("    Total: %d\n", served_requests);
+  printf("    Female: %d\n", served_f_requests);
+  printf("    Male: %d\n\n", served_m_requests);
 
 }
