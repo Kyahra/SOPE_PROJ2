@@ -15,7 +15,7 @@ struct Request{
 
 
 void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec init_time, char* file_type){
-  printf("\nentrou no writeDescriptor para escrever no ficheiro %s", file_type);
+  
    FILE * fp;
    char pid[15];
    char file_name[100];
@@ -64,7 +64,6 @@ struct Request getRequest(char * request_str){
 }
 
 void sendBackRequest(int fd, int id, char * gender, int dur, char * file){
-
   char request[100];
 
   sprintf(request, "%d", id);
@@ -77,6 +76,7 @@ void sendBackRequest(int fd, int id, char * gender, int dur, char * file){
 
 
   if(write(fd, request, strlen(request)+1) != strlen(request)+1){
+    printf("nao conseguiu reencaminhar o pedido\n");
     perror(file);
     exit(3);
   }

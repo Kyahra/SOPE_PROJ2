@@ -76,7 +76,7 @@ int main(int argc, char* argv[]){
   pthread_t handler_tid;
   pthread_t generator_tid = pthread_self();
 
-  rc = pthread_create(&handler_tid, NULL, denied_request_handler,&generator_tid);
+  rc = pthread_create(&handler_tid, NULL, denied_request_handler,&fd);
 
   int i = 0;
 
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]){
     if(gend == " F ") total_f_requests++;
 
   }
-  
+  printf("\nsaiu do ciclo for que gera pedido\n");
   while(processedRequests !=  max_requests); //nao fechamos o fifo ate todos os pedidos serem processados/ concluidos
   close(fd);
 
@@ -173,6 +173,7 @@ void *denied_request_handler(void * arg){
       sem_post(&mutex);
     } else {
       sendBackRequest(*((int *)arg), r.serial_number, r.gender, r.duration, "/tmp/entrada");
+      writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.");
     }
   }
   close(fdDenied);
@@ -186,6 +187,7 @@ void *getServedRequest(void * arg) { //arg = max_requests ==> numero de pedidos 
      int trash;
      trash = readLine(fd,str);
      if(trash > 0) {
+       printf("\num pedido vai ser servido\n");
        sem_wait(&mutex);
        processedRequests++; //incrementar tambem quando um pedido e rejeitado pela terceira vez
        sem_post(&mutex);

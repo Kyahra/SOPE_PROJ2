@@ -36,7 +36,7 @@ int discarded_m_requests =0;
 
 //int readline(int fd,char *str);
 //void writeDescriptor(char *type, int id, char * gender, int dur);
-int checkEntrance(char * sauna_gender, char * request_gender, int available_seats);
+int checkEntrance(char ** sauna_gender, char * request_gender, int available_seats);
 void  *time_update_sauna(void * r);
 //struct Request getRequest(char * request_str);
 //void sendBackRequest(int fd, int id, char * gender, int dur);
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]){
   sem_init(&semaphore, 0, num_seats);
   sem_init(&semaphore2, 0, 1);
 
-  char gender ='0';//ainda nao esta decidido o genero de pessoas que podem entrar na sauna
+  char * currGender = "null";//ainda nao esta decidido o genero de pessoas que podem entrar na sauna
   request_list = malloc(sizeof(struct Request) * num_seats);//array com os lugares da sauna (ocupados ou livres)
   struct Request null_request;//equivalente a uma vaga livre na sauna
 
@@ -91,18 +91,21 @@ int main(int argc, char* argv[]){
     struct Request r = getRequest(str);
     writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.");
 
-    if(checkEntrance(&gender,r.gender,available_seats)){
-      int fd;
-      fd=open("/tmp/aux",O_WRONLY  | O_APPEND);
-      write(fd, "lixo\n", 5);//para notificar o "grador.c" que este pedido vai ser processado ate ser servido
-      close(fd);
-      
+    if(checkEntrance(&currGender,r.gender,available_seats)){
+            
       int i = 0;
       for(; i < num_seats ; i++){//procurar por um lugar vago na sauna
         if(request_list[i].duration ==  0)
           request_list[i] = r;
       }
-
+      
+      sem_wait(&semaphore2);
+      available_seats--;
+      sem_post(&semaphore2);
+      int fdAux;
+      fdAux=open("/tmp/aux",O_WRONLY  | O_APPEND);
+      write(fdAux, "lixo\n", 5);//para notificar o "grador.c" que este pedido vai ser processado ate ser servido
+      close(fdAux);
 
       int rc;
       pthread_t handler_tid;
@@ -212,15 +215,16 @@ void  *time_update_sauna(void * r){
  
 }
 
-int checkEntrance(char * sauna_gender, char * request_gender, int available_seats){
-  //printf("genero atual na sauna: %c \n", (*sauna_gender));
-  if(available_seats == num_seats){
-    sauna_gender = request_gender;
+int checkEntrance(char ** sauna_gender, char * request_gender, int available_seats){
+  if(available_seats == num_seats){//sauna vazia
+    if(strcmp(request_gender, "F")) {
+      *sauna_gender = "F";
+    } else {
+      *sauna_gender = "M";
+    }
     return 1;
   }
-
-  if((*request_gender) == (*sauna_gender)) {
-    //printf("este pedido e do genero %c \n", (*request_gender));
+  if(strcmp(request_gender, *sauna_gender) == 0) {
     return 1;
   }
 
