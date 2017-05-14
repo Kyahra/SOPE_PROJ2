@@ -9,27 +9,41 @@
 #include <semaphore.h>
 #include "utils.h"
 
-int readline(int fd,char *str);
-void writeDescriptor(char *type, int id, char * gender, int dur);
-int checkEntrance(char * sauna_gender, char * request_gender, int available_seats);
-void  *time_update_sauna(void * r);
-struct Request getRequest(char * request_str);
-void denyRequest(int fd, int id, char * gender, int dur);
-
-
-
 
 int num_seats;
 int available_seats;
 struct Request * request_list;
+struct timespec init_time;
 /*
 * semaphore controla as entradas na sauna;
 * semaphore2 controla os conflitos entre as pessoas dentro da sauna
 */
 sem_t semaphore, semaphore2;
 
-int main(int argc, char* argv[]){
+// STATS
 
+int total_requests =0;
+int total_f_requests =0;
+int total_m_requests=0;
+
+int rejected_requests =0;
+int rejected_f_requests =0;
+int rejected_m_requests =0;
+
+int discarded_requests =0;
+int discarded_f_requests =0;
+int discarded_m_requests =0;
+
+//int readline(int fd,char *str);
+//void writeDescriptor(char *type, int id, char * gender, int dur);
+int checkEntrance(char * sauna_gender, char * request_gender, int available_seats);
+void  *time_update_sauna(void * r);
+//struct Request getRequest(char * request_str);
+//void sendBackRequest(int fd, int id, char * gender, int dur);
+
+int main(int argc, char* argv[]){
+  clock_gettime(CLOCK_MONOTONIC_RAW, &init_time);
+  
   if(argc != 2) {
     printf("usage: sauna <n. lugares>\n");
     exit(1);
@@ -40,10 +54,9 @@ int main(int argc, char* argv[]){
   sem_init(&semaphore, 0, num_seats);
   sem_init(&semaphore2, 0, 1);
 
-  int  fd;
-  char gender ='0';
-  request_list = (Request *) malloc(sizeof(Request)* num_seats);
-  struct Request null_request;
+  char gender ='0';//ainda nao esta decidido o genero de pessoas que podem entrar na sauna
+  request_list = malloc(sizeof(struct Request) * num_seats);//array com os lugares da sauna (ocupados ou livres)
+  struct Request null_request;//equivalente a uma vaga livre na sauna
 
   null_request.duration = 0;
 
@@ -53,7 +66,7 @@ int main(int argc, char* argv[]){
   }
 
   mkfifo("/tmp/entrada",0660);
-  fd=open("/tmp/entrada",O_RDONLY);
+  int fd=open("/tmp/entrada",O_RDONLY);
   
   int fdDenied = open("/tmp/rejeitados", O_WRONLY  | O_APPEND);
   if(fdDenied < 0){
@@ -64,18 +77,30 @@ int main(int argc, char* argv[]){
   char str[100];
 
   putchar('\n');
-  pthread_t threads_ids[1000];
+  
+  pthread_t threads_ids[1000];//array de id das threads "pedidos aceites"
   int count_ids = 0;
-  while(readLine(fd,str)){
+  
+  /*
+  * leitura de um fifo aberto para escrita, mas atualmente vazio ==> processo que le o fifo fica bloqueado a espera
+  * leitura de um fifo nao aberto para escrita e vazio ==> processo que le o fifo retorna 0 (end of file)
+  * quando ha bytes no fifo para serem lidos, o read() retorna o numero de bytes lidos
+  */
+  while(readLine(fd,str)){//este while acaba quando o programa "gerador.c" fechar o fifo em modo de escrita (/tmp/entrada)
 
     struct Request r = getRequest(str);
-    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration);
+    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.");
 
     if(checkEntrance(&gender,r.gender,available_seats)){
+      int fd;
+      fd=open("/tmp/aux",O_WRONLY  | O_APPEND);
+      write(fd, "lixo\n", 5);//para notificar o "grador.c" que este pedido vai ser processado ate ser servido
+      close(fd);
+      
       int i = 0;
-      for(; i < num_seats ; i++){
+      for(; i < num_seats ; i++){//procurar por um lugar vago na sauna
         if(request_list[i].duration ==  0)
-        request_list[i] = r;
+          request_list[i] = r;
       }
 
 
@@ -83,29 +108,32 @@ int main(int argc, char* argv[]){
       pthread_t handler_tid;
       pthread_t sauna_tid = pthread_self();
       void * ret;
-      rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);
-      threads_ids[count_ids] = handler_tid;
-
+      
+      rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);//thread equivalente a um pedido aceite pela sauna
+     
+      threads_ids[count_ids] = handler_tid;//id do thread "pedido aceite" guardado 
       count_ids++;
       
-    } else {
-      writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration);
-      denyRequest(fdDinied, r.serial_number, r.gender, r.duration);
+    } else {//pedido do genero oposto ao que se encontra na sauna
+      writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.");
+      sendBackRequest(fdDenied, r.serial_number, r.gender, r.duration, "/tmp/rejeitados");
     }
 
 }
 
+  close(fdDenied);
 
-int j = 0;
-    for(j; j <= count_ids; j++) {
-      pthread_join(threads_ids[j], NULL);
-    }
+  int j = 0;
+  for(j; j <= count_ids; j++) {
+    pthread_join(threads_ids[j], NULL);//esperar pelos pedidos aceites que ainda nao foram servido ate ao fim
+  }
 
   close(fd);
 
   return 0;
 }
 
+/*
 struct Request getRequest(char * request_str){
 
    const char delimiter[2] = " ";
@@ -118,13 +146,14 @@ struct Request getRequest(char * request_str){
    word = strtok(NULL, delimiter);
    r.gender = word;
 
-    word = strtok(NULL, delimiter);
-    r.duration = atoi(word);
+   word = strtok(NULL, delimiter);
+   r.duration = atoi(word);
 
-     return r;
+   return r;
 
-}
+}*/
 
+/*
 void writeDescriptor(char *type, int id, char * gender, int dur){
 
    FILE * fp;
@@ -156,13 +185,10 @@ int readline(int fd,char *str)
   }while (n>0 && *str++ !='\0');
 
   return (n>0);
-}
+}*/
 
 void  *time_update_sauna(void * r){
-  int fd;
-  fd=open("/tmp/aux",O_WRONLY  | O_APPEND);
-  
-  
+    
   struct Request r_copy = *((struct Request *) r);
   printf("entrou no thread\n");
 
@@ -177,14 +203,13 @@ void  *time_update_sauna(void * r){
   for(i; i<num_seats; i++){
 
     if(request_list[i].serial_number == r_copy.serial_number)
-      request_list[i].duration =0;
+      request_list[i].duration =0;//lugar passa a estar livre
   }
-  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration);
+  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration, init_time, "/tmp/bal.");
   sem_post(&semaphore2);
   sem_post(&semaphore);
   printf("saiu do wait\n");
-  write(fd, "lixo\n", 5);
-
+ 
 }
 
 int checkEntrance(char * sauna_gender, char * request_gender, int available_seats){
@@ -203,24 +228,23 @@ int checkEntrance(char * sauna_gender, char * request_gender, int available_seat
 
 }
 
-void denyRequest(int fd, int id, char * gender, int dur){
+/*
+void sendBackRequest(int fd, int id, char * gender, int dur, char * file){
 
-    srand(time(NULL));
+  char request[100];
+
+  sprintf(request, "%d", id);
+  strcat(request, " ");
+  strcat(request, gender);
+  strcat(request, " ");
+  strcat(request, dur);
 
 
-      char request[100];
+  if(write(fd, request, strlen(request)+1) != strlen(request)+1){
+    perror(file);
+    exit(3);
+  }
 
-      sprintf(request, "%d", id);
-      strcat(request, gender);
-      strcat(request, dur);
-
-
-    if(write(fd, request, strlen(request)+1) != strlen(request)+1){
-      perror("/tmp/rejeitados");
-      exit(3);
-    }
-
-    write(fd, "\n", 1);
+  write(fd, "\n", 1);
     
-
-}
+}*/

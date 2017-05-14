@@ -9,15 +9,16 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <semaphore.h>
 #include "utils.h"
 
 #define BUFFER_SIZE 512
 #define ID_MAX_SIZE 10
 
-int * denied_requests;
 int fRequestsNum, mRequestsNum;
 int fDeniedNum, mDeniedNum;
 int fDiscardedRequests, fDiscardedRequests;
+int * count_rejection;
 struct timespec init_time;
 
 // STATS
@@ -34,7 +35,7 @@ int discarded_requests =0;
 int discarded_f_requests =0;
 int discarded_m_requests =0;
 
-int processedRequests = 0; //ou servidos ou descartados
+int processedRequests = 0; //ou serao servidos ou foram descartados
 sem_t mutex;
 
 
@@ -42,6 +43,7 @@ sem_t mutex;
 char * sendRequest(int fd, int max_requests, int max_duration, int id);
 void *denied_request_handler(void * null);
 void printStats();
+void *getServedRequest(void * arg);
 
 int main(int argc, char* argv[]){
 
@@ -58,20 +60,18 @@ int main(int argc, char* argv[]){
   
   pthread_t auxThread;
   
-  pthread_create(&auxThread, NULL, getServedRequest,&max_requests);//thread que vais receber uma nota da sauna quando um pedido e servido
-  denied_requests = (int *) malloc(sizeof(int)* max_requests);
+  pthread_create(&auxThread, NULL, getServedRequest,&max_requests);//thread que vai receber uma nota da sauna quando um pedido e servido
+  
+  count_rejection = (int *) malloc(sizeof(int)* max_requests);
 
   int fd = open("/tmp/entrada", O_WRONLY  | O_APPEND);
-
-  mkfifo("/tmp/rejeitados",0660);
-  int fdDenied=open("/tmp/rejeitados",O_RDONLY);
-  
+    
   if(fd< 0){
     perror("/tmp/entrada");
     exit(2);
   }
-
-
+  
+ 
   int rc;
   pthread_t handler_tid;
   pthread_t generator_tid = pthread_self();
@@ -90,7 +90,8 @@ int main(int argc, char* argv[]){
     if(gend == " F ") total_f_requests++;
 
   }
-
+  
+  while(processedRequests !=  max_requests); //nao fechamos o fifo ate todos os pedidos serem processados/ concluidos
   close(fd);
 
   printStats();
@@ -118,54 +119,68 @@ void printStats(){
 
 char * sendRequest(int fd, int max_requests, int max_duration, int id){
 
-    srand(time(NULL));
+  srand(time(NULL));
+  char request[100];
+  char duration[15];
+
+  int r = rand() % 2;
+  sprintf(request, "%d", id);
+  char * gend;
+  if(r == 0) {
+    strcat(request, " M ");
+    gend = " M ";
+  }
+  else {
+    strcat(request, " F ");
+    gend = " F ";
+  }
+
+  int rd = rand() % max_duration;
+
+  sprintf(duration, "%d", rd);
+  strcat(request, duration);
 
 
-      char request[100];
-      char duration[15];
-      char serial_number[10];
+  if(write(fd, request, strlen(request)+1) != strlen(request)+1){
+    perror("/tmp/entrada");
+    exit(3);
+  }
 
-      int r = rand() % 2;
-      sprintf(request, "%d", id);
-      char * gend;
-      if(r == 0) {
-        strcat(request, " M ");
-        gend = " M ";
-      }
-      else {
-        strcat(request, " F ");
-        gend = " F ";
-      }
+  write(fd, "\n", 1);
+  writeDescriptor("PEDIDO", id, gend, rd, init_time, "/tmp/ger.");
+  sleep(2);
 
-      int rd = rand() % max_duration;
+  return gend;
+}
 
-      sprintf(duration, "%d", rd);
-      strcat(request, duration);
-
-
-    if(write(fd, request, strlen(request)+1) != strlen(request)+1){
-      perror("/tmp/entrada");
-      exit(3);
+void *denied_request_handler(void * arg){
+  mkfifo("/tmp/rejeitados",0660);
+  int fdDenied = open("/tmp/rejeitados",O_RDONLY);
+  
+  if(fdDenied < 0){
+    perror("/tmp/rejeitados");
+    exit(3);
+  }
+  //TODO: rejeitar pedidos
+  
+  char str[100];
+  while(readLine(fdDenied,str)) {
+    struct Request r = getRequest(str);
+    count_rejection[r.serial_number]++;
+    if(count_rejection[r.serial_number] > 2) {//pedido sera descartado
+      sem_wait(&mutex);
+      processedRequests++; //incrementar tambem quando um pedido e rejeitado pela terceira vez
+      sem_post(&mutex);
+    } else {
+      sendBackRequest(*((int *)arg), r.serial_number, r.gender, r.duration, "/tmp/entrada");
     }
-
-    sprintf(serial_number, "%d", id);
-
-      write(fd, "\n", 1);
-      writeDescriptor("PEDIDO", id, gend, rd, init_time, "/tmp/ger.");
-      sleep(2);
-
-
-      return gend;
-
+  }
+  close(fdDenied);
 }
 
-void *denied_request_handler(void * null){
-
-}
-
-void *getServedRequest(void * arg) {
+void *getServedRequest(void * arg) { //arg = max_requests ==> numero de pedidos gerados
   mkfifo("/tmp/aux",0660);
-  int fdDenied=open("/tmp/aux",O_RDONLY);
+  int fd=open("/tmp/aux",O_RDONLY);
   while(*((int *)arg) != processedRequests) {
      char str[100];
      int trash;
@@ -176,6 +191,7 @@ void *getServedRequest(void * arg) {
        sem_post(&mutex);
      }
   }
+  close(fd);
 }
 
 /*
