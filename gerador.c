@@ -63,6 +63,7 @@ int main(int argc, char* argv[]){
   pthread_create(&auxThread, NULL, getServedRequest,&max_requests);//thread que vai receber uma nota da sauna quando um pedido e servido
   
   count_rejection = (int *) malloc(sizeof(int)* max_requests);
+  memset(count_rejection, 0, sizeof count_rejection); //comecar array todo a zero
 
   int fd = open("/tmp/entrada", O_WRONLY  | O_APPEND);
     
@@ -193,6 +194,7 @@ void *getServedRequest(void * arg) { //arg = max_requests ==> numero de pedidos 
        sem_post(&mutex);
      }
   }
+  printf("\n>>>>>>>>>>>>>thread aux terminou<<<<<<<<<<<<<<<<<<\n");
   close(fd);
 }
 
