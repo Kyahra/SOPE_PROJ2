@@ -93,7 +93,7 @@ int main(int argc, char* argv[]){
   while(readLine(fd,str)){//este while acaba quando o programa "gerador.c" fechar o fifo em modo de escrita (/tmp/entrada)
 
     struct Request r = getRequest(str);
-    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.");
+    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.",pthread_self());
 
     total_requests++;
     if(strcmp(r.gender, "M")==0) total_m_requests++;
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]){
       count_ids++;
 
     } else {//pedido do genero oposto ao que se encontra na sauna
-      writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.");
+      writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.",pthread_self());
       sendBackRequest(fdDenied, r.serial_number, r.gender, r.duration, "/tmp/rejeitados");
 
       rejected_requests++;
@@ -176,7 +176,7 @@ void  *time_update_sauna(void * r){
   }
 
 
-  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration, init_time, "/tmp/bal.");
+  writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration, init_time, "/tmp/bal.",  pthread_self());
 
   served_requests++;
   if(strcmp(r_copy.gender, "M")==0) served_m_requests++;

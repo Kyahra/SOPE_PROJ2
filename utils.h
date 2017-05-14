@@ -5,6 +5,7 @@
 #include<unistd.h>
 #include<string.h>
 #include <inttypes.h>
+#include <pthread.h>
 
 struct Request{
   double duration;
@@ -15,7 +16,7 @@ struct Request{
 
 
 
-void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec init_time, char* file_type){
+void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec init_time, char* file_type, pthread_t tid){
 
    FILE * fp;
    char pid[15];
@@ -32,6 +33,10 @@ void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec 
 
 
   fp = fopen (file_name, "a+");
+
+  if(tid)
+  fprintf(fp, "%-10.2f - %-10d - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(), tid, id,gender,dur,type);
+  else
   fprintf(fp, "%-10.2f - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(),id,gender,dur,type);
 
   fclose(fp);

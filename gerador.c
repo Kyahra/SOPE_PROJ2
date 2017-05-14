@@ -149,7 +149,7 @@ char * sendRequest(int fd, int max_requests, int max_duration, int id){
   }
 
   write(fd, "\n", 1);
-  writeDescriptor("PEDIDO", id, gend, rd, init_time, "/tmp/ger.");
+  writeDescriptor("PEDIDO", id, gend, rd, init_time, "/tmp/ger.",0);
 
   sleep(2);
 
@@ -171,14 +171,14 @@ void *denied_request_handler(void * arg){
     struct Request r = getRequest(str);
     count_rejection[r.serial_number]++;
 
-    writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.");
+    writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.",0);
 
     rejected_requests++;
     if(strcmp(r.gender, "M")==0) rejected_m_requests++;
     if(strcmp(r.gender, "F")==0) rejected_f_requests++;
 
     if(count_rejection[r.serial_number] > 2) {//pedido sera descartado
-      writeDescriptor("DESCARTADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.");
+      writeDescriptor("DESCARTADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.",0);
 
       discarded_requests++;
       if(strcmp(r.gender, "M")==0) discarded_m_requests++;
@@ -186,7 +186,7 @@ void *denied_request_handler(void * arg){
 
     } else {
       sendBackRequest(*((int *)arg), r.serial_number, r.gender, r.duration, "/tmp/entrada");
-      writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.");
+      writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.",0);
 
     }
 
