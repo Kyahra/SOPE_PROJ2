@@ -53,11 +53,9 @@ int main(int argc, char* argv[]){
   int max_requests = atoi(argv[1]);
   int max_duration = atoi(argv[2]);
 
-  pthread_t auxThread;
-
 
   count_rejection = (int *) malloc(sizeof(int)* max_requests);
-  memset(count_rejection, 0, sizeof count_rejection); //comecar array todo a zero
+  memset(count_rejection, 0, sizeof(int)*max_requests); //comecar array todo a zero
 
   int fd = open("/tmp/entrada", O_WRONLY  | O_APPEND);
 
@@ -67,23 +65,22 @@ int main(int argc, char* argv[]){
   }
 
 
-  int rc;
-  pthread_t handler_tid;
-  pthread_t generator_tid = pthread_self();
 
-  rc = pthread_create(&handler_tid, NULL, denied_request_handler,&fd);
+
+  pthread_t handler_tid;
+
+  pthread_create(&handler_tid, NULL, denied_request_handler,&fd);
 
   int i = 0;
 
-  for(i; i < max_requests; i++){
+  for(; i < max_requests; i++){
     char* gend;
 
     gend = sendRequest(fd, max_requests, max_duration,i);
 
     total_requests++;
-    if(gend == "M") total_m_requests++;
-    if(gend == "F") total_f_requests++;
-
+    if(strcmp(gend, "M")==0) total_m_requests++;
+    if(strcmp(gend, "M")==0) total_f_requests++;
 
 
   }
@@ -196,4 +193,6 @@ void *denied_request_handler(void * arg){
     if(strcmp(r.gender, "F")==0) rejected_f_requests++;
   }
   close(fdDenied);
+
+  return 0;
 }

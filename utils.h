@@ -35,7 +35,7 @@ void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec 
   fp = fopen (file_name, "a+");
 
   if(tid)
-  fprintf(fp, "%-10.2f - %-10d - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(), tid, id,gender,dur,type);
+  fprintf(fp, "%-10.2f - %-10d - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(),(int) tid, id,gender,dur,type);
   else
   fprintf(fp, "%-10.2f - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(),id,gender,dur,type);
 

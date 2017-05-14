@@ -62,7 +62,7 @@ int main(int argc, char* argv[]){
   null_request.duration = 0;
 
   int i = 0;
-  for(i; i < num_seats; i++) {
+  for(; i < num_seats; i++) {
     request_list[i] = null_request;
   }
 
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]){
   while(readLine(fd,str)){//este while acaba quando o programa "gerador.c" fechar o fifo em modo de escrita (/tmp/entrada)
 
     struct Request r = getRequest(str);
-    writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.",pthread_self());
+    writeDescriptor("RECEBIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.",pthread_self());
 
     total_requests++;
     if(strcmp(r.gender, "M")==0) total_m_requests++;
@@ -112,14 +112,8 @@ int main(int argc, char* argv[]){
       sem_post(&semaphore2);
 
 
-      int rc;
       pthread_t handler_tid;
-      pthread_t sauna_tid = pthread_self();
-      void * ret;
-
-
-
-      rc = pthread_create(&handler_tid, NULL, time_update_sauna,&r);//thread equivalente a um pedido aceite pela sauna
+      pthread_create(&handler_tid, NULL, time_update_sauna,&r);//thread equivalente a um pedido aceite pela sauna
 
       threads_ids[count_ids] = handler_tid;//id do thread "pedido aceite" guardado
       count_ids++;
@@ -142,7 +136,7 @@ int main(int argc, char* argv[]){
   close(fdDenied);
 
   int j = 0;
-  for(j; j <= count_ids; j++) {
+  for(; j <= count_ids; j++) {
     pthread_join(threads_ids[j], NULL);//esperar pelos pedidos aceites que ainda nao foram servido ate ao fim
   }
 
@@ -168,7 +162,7 @@ void  *time_update_sauna(void * r){
   available_seats++;
 
   int i =0;
-  for(i; i<num_seats; i++){
+  for(; i<num_seats; i++){
 
     if(request_list[i].serial_number == r_copy.serial_number)
       request_list[i].duration =0;//lugar passa a estar livre
@@ -186,6 +180,7 @@ void  *time_update_sauna(void * r){
   sem_post(&semaphore2);
   sem_post(&semaphore);
 
+  return 0;
 
 }
 
