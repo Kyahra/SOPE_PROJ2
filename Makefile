@@ -1,13 +1,13 @@
-all: sauna.c gerador.c
-	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
-	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
-sauna:
-	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
-gerador:
-	gcc -o ./bin/sauna sauna.c -Wall -lpthread -lrt
+#!/bin/bash
+#Makefile for generator and sauna binaries
+all: gerador sauna
+
+gerador: gerador.c utils.h
+	gcc -Wall gerador.c -o gerador -lpthread
+	
+sauna: sauna.c utils.h
+	gcc -Wall sauna.c -o sauna -lpthread
 
 clean:
 	rm -f /tmp/entrada /tmp/rejeitados
-
-cleanLogs:
-    rm -f /tmp/bal.* /tmp/ger.*
+	rm -f gerador sauna
