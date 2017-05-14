@@ -58,7 +58,6 @@ int main(int argc, char* argv[]){
 
   pthread_t auxThread;
 
-//  pthread_create(&auxThread, NULL, getServedRequest,&max_requests);//thread que vai receber uma nota da sauna quando um pedido e servido
 
   count_rejection = (int *) malloc(sizeof(int)* max_requests);
   memset(count_rejection, 0, sizeof count_rejection); //comecar array todo a zero
@@ -87,6 +86,8 @@ int main(int argc, char* argv[]){
     total_requests++;
     if(gend == "M") total_m_requests++;
     if(gend == "F") total_f_requests++;
+
+
 
   }
 
@@ -118,6 +119,7 @@ void printStats(){
 
 char * sendRequest(int fd, int max_requests, int max_duration, int id){
 
+
   srand(time(NULL));
   char request[100];
   char duration[15];
@@ -147,6 +149,7 @@ char * sendRequest(int fd, int max_requests, int max_duration, int id){
 
   write(fd, "\n", 1);
   writeDescriptor("PEDIDO", id, gend, rd, init_time, "/tmp/ger.");
+
   sleep(2);
 
   return gend;

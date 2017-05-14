@@ -3,11 +3,12 @@
 #include<stdio.h>
 #include <time.h>
 #include<unistd.h>
+#include<string.h>
 #include <inttypes.h>
 
 struct Request{
   double duration;
-  char* gender;
+  char gender[2];
   int serial_number;
 };
 
@@ -28,6 +29,8 @@ void writeDescriptor(char *type, int id, char * gender, int dur,struct timespec 
   sprintf(pid, "%d", (int) getpid());
   sprintf(file_name,"%s", file_type);
   strcat(file_name, pid);
+
+
 
   fp = fopen (file_name, "a+");
   fprintf(fp, "%-10" PRIu64 " - %-10d - %-10d: %-10s - %-10d - %-10s\n",delta_us, getpid(),id,gender,dur,type);
@@ -54,8 +57,12 @@ struct Request getRequest(char * request_str){
    r.serial_number = atoi(word);
 
    word = strtok(NULL, delimiter);
-   printf("%s",word);
-   r.gender = word;
+
+  // r.gender = word;
+
+   strcpy(r.gender,word);
+
+
 
    word = strtok(NULL, delimiter);
    r.duration = atoi(word);
