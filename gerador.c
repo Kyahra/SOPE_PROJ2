@@ -36,7 +36,7 @@ int discarded_m_requests =0;
 
 
 char * sendRequest(int fd, int max_requests, int max_duration, int id);
-void *denied_request_handler(void * null);
+void *rejected_request_handler(void * null);
 void *getServedRequest(void * arg);
 void printStats();
 
@@ -64,14 +64,17 @@ int main(int argc, char* argv[]){
     exit(2);
   }
 
+  pthread_t rejected_handler_tid;
 
-
-
-  pthread_t handler_tid;
-
-  pthread_create(&handler_tid, NULL, denied_request_handler,&fd);
+  pthread_create(&rejected_handler_tid, NULL, rejected_request_handler,&fd);
 
   int i = 0;
+
+  if(write(fd, argv[1], strlen(argv[1])+1) != strlen(argv[1])+1){
+    perror("/tmp/entrada");
+    exit(3);
+  }
+  write(fd, "\n", 1);
 
   for(; i < max_requests; i++){
     char* gend;
@@ -80,11 +83,12 @@ int main(int argc, char* argv[]){
 
     total_requests++;
     if(strcmp(gend, "M")==0) total_m_requests++;
-    if(strcmp(gend, "M")==0) total_f_requests++;
+    if(strcmp(gend, "F")==0) total_f_requests++;
 
 
   }
 
+  pthread_join(rejected_handler_tid,NULL);
 
   close(fd);
 
@@ -118,7 +122,6 @@ void printStats(){
 char * sendRequest(int fd, int max_requests, int max_duration, int id){
 
 
-  srand(time(NULL));
   char request[100];
   char duration[15];
 
@@ -148,14 +151,17 @@ char * sendRequest(int fd, int max_requests, int max_duration, int id){
   write(fd, "\n", 1);
   writeDescriptor("PEDIDO", id, gend, rd, init_time, "/tmp/ger.",0);
 
-  sleep(2);
+
 
   return gend;
 }
 
-void *denied_request_handler(void * arg){
+void *rejected_request_handler(void * arg){
+
   mkfifo("/tmp/rejeitados",0660);
   int fdDenied = open("/tmp/rejeitados",O_RDONLY);
+  int fdDiscarded=open("/tmp/descartados", O_WRONLY  | O_APPEND);
+
 
   if(fdDenied < 0){
     perror("/tmp/rejeitados");
@@ -181,6 +187,14 @@ void *denied_request_handler(void * arg){
       if(strcmp(r.gender, "M")==0) discarded_m_requests++;
       if(strcmp(r.gender, "F")==0) discarded_f_requests++;
 
+      if(write(fdDiscarded, "yo", 3) != 3){
+        perror("/tmp/descartados");
+        exit(3);
+      }
+
+      write(fdDiscarded, "\n", 1);
+
+
     } else {
       sendBackRequest(*((int *)arg), r.serial_number, r.gender, r.duration, "/tmp/entrada");
       writeDescriptor("PEDIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/ger.",0);
@@ -192,7 +206,13 @@ void *denied_request_handler(void * arg){
     if(strcmp(r.gender, "M")==0) rejected_m_requests++;
     if(strcmp(r.gender, "F")==0) rejected_f_requests++;
   }
+
   close(fdDenied);
+  close(fdDiscarded);
+
+  if(unlink("/tmp/rejeitados")<0)
+   printf("Error when destroying FIFO '/tmp/rejeitados'\n");
+
 
   return 0;
 }

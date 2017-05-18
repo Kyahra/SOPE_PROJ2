@@ -16,6 +16,15 @@ struct Request * request_list;
 struct timespec init_time;
 char  currGender[2];//ainda nao esta decidido o genero de pessoas que podem entrar na sauna
 
+int end =0;
+int discarded_requests =0;
+int max_requests;
+
+int fdInput;
+int fdRejected;
+int fdDiscarded;
+
+
 /*
 * semaphore controla as entradas na sauna;
 * semaphore2 controla os conflitos entre as pessoas dentro da sauna
@@ -39,7 +48,9 @@ int served_m_requests =0;
 
 int checkEntrance(const char * request_gender, int available_seats);
 void  *time_update_sauna(void * r);
+void  *discarded_handler(void * null);
 void printStats();
+void terminate();
 
 
 int main(int argc, char* argv[]){
@@ -67,30 +78,30 @@ int main(int argc, char* argv[]){
   }
 
   mkfifo("/tmp/entrada",0660);
-  int fd=open("/tmp/entrada",O_RDONLY);
+  fdInput=open("/tmp/entrada",O_RDONLY);
 
-  int fdDenied = open("/tmp/rejeitados", O_WRONLY  | O_APPEND);
-  if(fdDenied < 0){
+  fdRejected = open("/tmp/rejeitados", O_WRONLY  | O_APPEND);
+
+  if(fdRejected < 0){
     perror("/tmp/rejeitados");
     exit(2);
   }
+
+
+  pthread_t discarded_handler_tid;
+  pthread_create(&discarded_handler_tid, NULL, discarded_handler,NULL);
 
   char str[100];
 
   putchar('\n');
 
-  pthread_t threads_ids[1000];//array de id das threads "pedidos aceites"
-  int count_ids = 0;
-
-  /*
-  * leitura de um fifo aberto para escrita, mas atualmente vazio ==> processo que le o fifo fica bloqueado a espera
-  * leitura de um fifo nao aberto para escrita e vazio ==> processo que le o fifo retorna 0 (end of file)
-  * quando ha bytes no fifo para serem lidos, o read() retorna o numero de bytes lidos
-  */
+  readLine(fdInput,str);
+  max_requests = atoi(str);
 
 
+  while(!end){//este while acaba quando o programa "gerador.c" fechar o fifo em modo de escrita (/tmp/entrada)
 
-  while(readLine(fd,str)){//este while acaba quando o programa "gerador.c" fechar o fifo em modo de escrita (/tmp/entrada)
+    readLine(fdInput,str);
 
     struct Request r = getRequest(str);
     writeDescriptor("RECEBIDO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.",pthread_self());
@@ -115,34 +126,20 @@ int main(int argc, char* argv[]){
       pthread_t handler_tid;
       pthread_create(&handler_tid, NULL, time_update_sauna,&r);//thread equivalente a um pedido aceite pela sauna
 
-      threads_ids[count_ids] = handler_tid;//id do thread "pedido aceite" guardado
-      count_ids++;
 
     } else {//pedido do genero oposto ao que se encontra na sauna
       writeDescriptor("REJEITADO", r.serial_number, r.gender, r.duration, init_time, "/tmp/bal.",pthread_self());
-      sendBackRequest(fdDenied, r.serial_number, r.gender, r.duration, "/tmp/rejeitados");
+      sendBackRequest(fdRejected, r.serial_number, r.gender, r.duration, "/tmp/rejeitados");
 
       rejected_requests++;
       if(strcmp(r.gender, "M")==0) rejected_m_requests++;
       if(strcmp(r.gender, "F")==0) rejected_f_requests++;
-
 
     }
 
 
 
 }
-
-  close(fdDenied);
-
-  int j = 0;
-  for(; j <= count_ids; j++) {
-    pthread_join(threads_ids[j], NULL);//esperar pelos pedidos aceites que ainda nao foram servido ate ao fim
-  }
-
-  close(fd);
-
-  printStats();
 
   return 0;
 }
@@ -173,6 +170,12 @@ void  *time_update_sauna(void * r){
   writeDescriptor("SERVIDO", r_copy.serial_number, r_copy.gender, r_copy.duration, init_time, "/tmp/bal.",  pthread_self());
 
   served_requests++;
+
+  if(discarded_requests + served_requests == max_requests)
+    terminate();
+
+
+
   if(strcmp(r_copy.gender, "M")==0) served_m_requests++;
   if(strcmp(r_copy.gender, "F")==0) served_f_requests++;
 
@@ -181,6 +184,34 @@ void  *time_update_sauna(void * r){
   sem_post(&semaphore);
 
   return 0;
+
+}
+
+
+void  *discarded_handler(void * null){
+    char str[100];
+
+    mkfifo("/tmp/descartados",0660);
+    fdDiscarded = open("/tmp/descartados", O_RDONLY);
+
+    if(fdDiscarded < 0){
+      perror("/tmp/descartados");
+      exit(2);
+    }
+
+
+    while(readLine(fdDiscarded,str)){
+      discarded_requests++;
+
+      if(discarded_requests + served_requests == max_requests)
+         terminate();
+
+    }
+
+    close(fdDiscarded);
+
+    return NULL;
+
 
 }
 
@@ -216,5 +247,24 @@ void printStats(){
   printf("    Total: %d\n", served_requests);
   printf("    Female: %d\n", served_f_requests);
   printf("    Male: %d\n\n", served_m_requests);
+
+}
+
+
+void terminate(){
+
+    close(fdInput);
+    close(fdRejected);
+    close(fdDiscarded);
+
+    if(unlink("/tmp/descartados")<0)
+      printf("Error when destroying FIFO '/tmp/descartados'\n");
+
+    if(unlink("/tmp/entrada")<0)
+        printf("Error when destroying FIFO '/tmp/entrada'\n");
+
+    printStats();
+
+    exit(0);
 
 }
